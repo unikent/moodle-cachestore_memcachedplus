@@ -54,7 +54,14 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
     public function initialise(cache_definition $definition) {
         parent::initialise($definition);
 
-        $this->options[Memcached::OPT_PREFIX_KEY] .= $definition->get_id();
+        $this->options[Memcached::OPT_PREFIX_KEY] .= crc32($definition->get_id());
+        $this->connection->setOption(Memcached::OPT_PREFIX_KEY, $this->options[Memcached::OPT_PREFIX_KEY]);
+
+        if ($this->clustered) {
+            foreach ($this->setconnections as $connection) {
+                $connection->setOption(Memcached::OPT_PREFIX_KEY, $this->options[Memcached::OPT_PREFIX_KEY]);
+            }
+        }
     }
 
     /**
@@ -84,7 +91,7 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      */
     public function purge() {
         $keys = $this->find_all();
-        $this->delete_many($keys);
+        return $this->delete_many($keys) == count($keys);
     }
 
     /**
@@ -222,5 +229,27 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
         }
 
         return $result;
+    }
+
+    /**
+     * Creates a test instance for unit tests if possible.
+     * @param cache_definition $definition
+     * @return bool|cachestore_memcached
+     */
+    public static function initialise_unit_test_instance(cache_definition $definition) {
+        if (!self::are_requirements_met()) {
+            return false;
+        }
+        if (!defined('TEST_CACHESTORE_MEMCACHED_TESTSERVERS')) {
+            return false;
+        }
+
+        $configuration = array();
+        $configuration['servers'] = explode("\n", TEST_CACHESTORE_MEMCACHED_TESTSERVERS);
+
+        $store = new static('Test memcached', $configuration);
+        $store->initialise($definition);
+
+        return $store;
     }
 }
