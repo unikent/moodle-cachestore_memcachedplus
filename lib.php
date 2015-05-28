@@ -72,7 +72,7 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return bool True if the lock could be acquired, false otherwise.
      */
     public function acquire_lock($key, $ownerid) {
-        // TODO
+        return $this->connection->add("lock_{$key}", $ownerid);
     }
 
     /**
@@ -84,7 +84,8 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      *      is no lock.
      */
     public function check_lock_state($key, $ownerid) {
-        // TODO
+        $lock = $this->connection->get("lock_{$key}");
+        return $lock !== false && $lock == $ownerid;
     }
 
     /**
@@ -96,7 +97,7 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return bool True if the lock has been released, false if there was a problem releasing the lock.
      */
     public function release_lock($key, $ownerid) {
-        // TODO
+        $this->connection->delete("lock_{$key}");
     }
 
     /**
