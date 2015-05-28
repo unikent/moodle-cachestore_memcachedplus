@@ -120,7 +120,7 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return bool True if the cache has the requested key, false otherwise.
      */
     public function has($key) {
-        // TODO
+        return $this->has_any(array($key));
     }
 
     /**
@@ -137,7 +137,14 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return bool True if the cache has at least one of the given keys
      */
     public function has_any(array $keys) {
-        // TODO
+        $haystack = $this->connection->getAllKeys();
+        foreach ($keys as $key) {
+            if (in_array($key, $haystack)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -154,8 +161,16 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return bool True if the cache has all of the given keys, false otherwise.
      */
     public function has_all(array $keys) {
-        // TODO
+        $haystack = $this->connection->getAllKeys();
+        foreach ($keys as $key) {
+            if (!in_array($key, $haystack)) {
+                return false;
+            }
+        }
+
+        return true;
     }
+
     /**
      * Finds all of the keys being used by the cache store.
      *
