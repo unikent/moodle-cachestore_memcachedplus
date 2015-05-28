@@ -83,8 +83,8 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return boolean True on success. False otherwise.
      */
     public function purge() {
-        // TODO
-        parent::purge();
+        $keys = $this->find_all();
+        $this->delete_many($keys);
     }
 
     /**
