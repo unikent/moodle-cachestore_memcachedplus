@@ -177,7 +177,7 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return array.
      */
     public function find_all() {
-        // TODO
+        return $this->connection->getAllKeys();
     }
 
     /**
@@ -186,6 +186,15 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @param string $prefix
      */
     public function find_by_prefix($prefix) {
-        // TODO
+        $result = array();
+
+        $keys = $this->find_all();
+        foreach ($keys as $key) {
+            if (strpos($key, $prefix) === 0) {
+                $result[] = $key;
+            }
+        }
+
+        return $result;
     }
 }
