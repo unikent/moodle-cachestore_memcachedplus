@@ -43,7 +43,6 @@ require_once($CFG->dirroot . '/cache/stores/memcached/lib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class cachestore_memcachedplus extends cachestore_memcached implements cache_is_configurable, cache_is_key_aware, cache_is_searchable, cache_is_lockable {
-
     /**
      * Initialises the cache.
      *
@@ -54,14 +53,36 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
     public function initialise(cache_definition $definition) {
         parent::initialise($definition);
 
-        $this->options[Memcached::OPT_PREFIX_KEY] .= crc32($definition->get_id());
-        $this->connection->setOption(Memcached::OPT_PREFIX_KEY, $this->options[Memcached::OPT_PREFIX_KEY]);
+        $prefix = $this->options[Memcached::OPT_PREFIX_KEY] . crc32($definition->get_id());
+        if (strlen($prefix) > 128) {
+            $prefix = crc32($prefix);
+        }
+
+        $this->options[Memcached::OPT_PREFIX_KEY] = $prefix;
+
+        $this->connection = new Memcached(crc32($prefix));
+        $servers = $this->connection->getServerList();
+        if (empty($servers)) {
+            foreach ($this->options as $key => $value) {
+                $this->connection->setOption($key, $value);
+            }
+            $this->connection->addServers($this->servers);
+        }
 
         if ($this->clustered) {
-            foreach ($this->setconnections as $connection) {
-                $connection->setOption(Memcached::OPT_PREFIX_KEY, $this->options[Memcached::OPT_PREFIX_KEY]);
+            foreach ($this->setservers as $setserver) {
+                // Since we will have a number of them with the same name, append server and port.
+                $connection = new Memcached(crc32($prefix . $setserver[0] . $setserver[1]));
+                foreach ($this->options as $key => $value) {
+                    $connection->setOption($key, $value);
+                }
+                $connection->addServer($setserver[0], $setserver[1]);
+                $this->setconnections[] = $connection;
             }
         }
+
+        // Test the connection to the main connection.
+        $this->isready = @$this->connection->set("ping", 'ping', 1);
     }
 
     /**
