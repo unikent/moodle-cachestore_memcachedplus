@@ -129,4 +129,49 @@ class cachestore_memcachedplus_test extends cachestore_tests {
         // Cleanup.
         $instance->purge();
     }
+
+    /**
+     * Test locking
+     */
+    public function test_locking() {
+        $definition = cache_definition::load_adhoc(cache_store::MODE_APPLICATION, 'cachestore_memcachedplus', 'phpunit_test');
+        $instance = cachestore_memcachedplus::initialise_unit_test_instance($definition);
+
+        if (!$instance) {
+            $this->markTestSkipped();
+        }
+
+        // Basic lock checks.
+        $this->assertFalse($instance->check_lock_state('testlock', 'phpunit'));
+        $this->assertTrue($instance->acquire_lock('testlock', 'phpunit'));
+        $this->assertTrue($instance->check_lock_state('testlock', 'phpunit'));
+        $this->assertFalse($instance->check_lock_state('testlock', 'phpunit2'));
+        $this->assertFalse($instance->check_lock_state('testlock2', 'phpunit'));
+        $this->assertFalse($instance->check_lock_state('testlock2', 'phpunit2'));
+        $this->assertTrue($instance->release_lock('testlock', 'phpunit'));
+        $this->assertFalse($instance->check_lock_state('testlock', 'phpunit'));
+
+        // Re-lock check.
+        $this->assertTrue($instance->acquire_lock('testlock', 'phpunit'));
+        $this->assertTrue($instance->check_lock_state('testlock', 'phpunit'));
+        $this->assertTrue($instance->release_lock('testlock', 'phpunit'));
+
+        // Multi-lock checks.
+        $this->assertTrue($instance->acquire_lock('testlock1', 'phpunit'));
+        $this->assertTrue($instance->acquire_lock('testlock2', 'phpunit'));
+        $this->assertTrue($instance->acquire_lock('testlock3', 'differentphpunit'));
+        $this->assertTrue($instance->check_lock_state('testlock1', 'phpunit'));
+        $this->assertTrue($instance->check_lock_state('testlock2', 'phpunit'));
+        $this->assertTrue($instance->check_lock_state('testlock3', 'differentphpunit'));
+        $this->assertFalse($instance->check_lock_state('testlock3', 'phpunit'));
+        $this->assertTrue($instance->release_lock('testlock1', 'phpunit'));
+        $this->assertTrue($instance->release_lock('testlock2', 'phpunit'));
+        $this->assertTrue($instance->release_lock('testlock3', 'differentphpunit'));
+        $this->assertFalse($instance->check_lock_state('testlock1', 'phpunit'));
+        $this->assertFalse($instance->check_lock_state('testlock2', 'phpunit'));
+        $this->assertFalse($instance->check_lock_state('testlock3', 'differentphpunit'));
+
+        // Cleanup.
+        $instance->purge();
+    }
 }
