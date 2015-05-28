@@ -43,6 +43,20 @@ require_once($CFG->dirroot . '/cache/stores/memcached/lib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class cachestore_memcachedplus extends cachestore_memcached implements cache_is_configurable, cache_is_key_aware, cache_is_searchable, cache_is_lockable {
+
+    /**
+     * Initialises the cache.
+     *
+     * Once this has been done the cache is all set to be used.
+     *
+     * @param cache_definition $definition
+     */
+    public function initialise(cache_definition $definition) {
+        parent::initialise($definition);
+
+        $this->options[Memcached::OPT_PREFIX_KEY] .= $definition->get_id();
+    }
+
     /**
      * Returns the supported modes as a combined int.
      *
@@ -64,122 +78,13 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
     }
 
     /**
-     * Return a prefix for this definition.
-     */
-    protected function get_key_prefix() {
-        if (!isset($this->definition)) {
-            return '';
-        }
-
-        return $this->definition->get_id();
-    }
-
-    /**
-     * Retrieves an item from the cache store given its key.
-     *
-     * @param string $key The key to retrieve
-     * @return mixed The data that was associated with the key, or false if the key did not exist.
-     */
-    public function get($key) {
-        $key = $this->get_key_prefix() . $key;
-
-        return parent::get($key);
-    }
-
-
-    /**
-     * Retrieves several items from the cache store in a single transaction.
-     *
-     * If not all of the items are available in the cache then the data value for those that are missing will be set to false.
-     *
-     * @param array $keys The array of keys to retrieve
-     * @return array An array of items from the cache. There will be an item for each key, those that were not in the store will
-     *      be set to false.
-     */
-    public function get_many($keys) {
-        $prefix = $this->get_key_prefix();
-
-        $vals = array();
-        foreach ($keys as $key) {
-            $vals[] = $prefix . $key;
-        }
-
-        return parent::get_many($keys);
-    }
-
-
-    /**
-     * Sets an item in the cache given its key and data value.
-     *
-     * @param string $key The key to use.
-     * @param mixed $data The data to set.
-     * @return bool True if the operation was a success false otherwise.
-     */
-    public function set($key, $data) {
-        $key = $this->get_key_prefix() . $key;
-
-        return parent::set($key, $data);
-    }
-
-
-    /**
-     * Sets many items in the cache in a single transaction.
-     *
-     * @param array $keyvaluearray An array of key value pairs. Each item in the array will be an associative array with two
-     *      keys, 'key' and 'value'.
-     * @return int The number of items successfully set. It is up to the developer to check this matches the number of items
-     *      sent ... if they care that is.
-     */
-    public function set_many(array $keyvaluearray) {
-        $prefix = $this->get_key_prefix();
-
-        $vals = array();
-        foreach ($keyvaluearray as $key => $value) {
-            $vals[$prefix . $key] = $value;
-        }
-
-        return parent::set_many($vals);
-    }
-
-
-    /**
-     * Deletes an item from the cache store.
-     *
-     * @param string $key The key to delete.
-     * @return bool Returns true if the operation was a success, false otherwise.
-     */
-    public function delete($key) {
-        $key = $this->get_key_prefix() . $key;
-
-        return parent::delete($key);
-    }
-
-
-    /**
-     * Deletes several keys from the cache in a single action.
-     *
-     * @param array $keys The keys to delete
-     * @return int The number of items successfully deleted.
-     */
-    public function delete_many(array $keys) {
-        $prefix = $this->get_key_prefix();
-
-        $vals = array();
-        foreach ($keys as $key) {
-            $vals[] = $prefix . $key;
-        }
-
-        return parent::delete_many($keys);
-    }
-
-
-    /**
      * Purges the cache deleting all items within it.
      *
      * @return boolean True on success. False otherwise.
      */
     public function purge() {
         // TODO
+        parent::purge();
     }
 
     /**
@@ -191,8 +96,7 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return bool True if the lock could be acquired, false otherwise.
      */
     public function acquire_lock($key, $ownerid) {
-        $prefix = $this->get_key_prefix();
-        return $this->connection->add("{$prefix}lock_{$key}", $ownerid);
+        return $this->connection->add("lock_{$key}", $ownerid);
     }
 
     /**
@@ -257,11 +161,9 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return bool True if the cache has at least one of the given keys
      */
     public function has_any(array $keys) {
-        $prefix = $this->get_key_prefix();
-
-        $haystack = $this->connection->getAllKeys();
+        $haystack = $this->find_all();
         foreach ($keys as $key) {
-            if (in_array($prefix . $key, $haystack)) {
+            if (in_array($key, $haystack)) {
                 return true;
             }
         }
@@ -283,11 +185,9 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return bool True if the cache has all of the given keys, false otherwise.
      */
     public function has_all(array $keys) {
-        $prefix = $this->get_key_prefix();
-
-        $haystack = $this->connection->getAllKeys();
+        $haystack = $this->find_all();
         foreach ($keys as $key) {
-            if (!in_array($prefix . $key, $haystack)) {
+            if (!in_array($key, $haystack)) {
                 return false;
             }
         }
@@ -310,13 +210,14 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @param string $prefix
      */
     public function find_by_prefix($prefix) {
-        $prefix = $this->get_key_prefix() . $prefix;
+        $prefix = $this->options[Memcached::OPT_PREFIX_KEY] . $prefix;
         $result = array();
 
         $keys = $this->connection->getAllKeys();
         foreach ($keys as $key) {
-            if (strpos($key, $prefix) === 0) {
-                $result[] = $key;
+            $pos = strpos($key, $prefix);
+            if ($pos === 0) {
+                $result[] = substr($key, strlen($prefix));
             }
         }
 
