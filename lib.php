@@ -149,7 +149,7 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return bool True if the lock has been released, false if there was a problem releasing the lock.
      */
     public function release_lock($key, $ownerid) {
-        $this->delete("lock_{$key}");
+        return $this->delete("lock_{$key}");
     }
 
     /**
