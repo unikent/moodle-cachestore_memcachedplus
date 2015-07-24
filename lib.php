@@ -130,7 +130,8 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      */
     public function purge() {
         $keys = $this->find_all();
-        return $this->delete_many($keys) == count($keys);
+        $this->delete_many($keys);
+        return true;
     }
 
     /**
