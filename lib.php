@@ -106,13 +106,32 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
     }
 
     /**
+     * Deletes several keys from the cache in a single action.
+     *
+     * @param array $keys The keys to delete
+     * @return int The number of items successfully deleted.
+     */
+    public function delete_many(array $keys) {
+        if ($this->clustered) {
+            foreach ($this->setconnections as $connection) {
+                $connection->deleteMulti($keys);
+            }
+        } else {
+            $this->connection->deleteMulti($keys);
+        }
+
+        return count($keys);
+    }
+
+    /**
      * Purges the cache deleting all items within it.
      *
      * @return boolean True on success. False otherwise.
      */
     public function purge() {
         $keys = $this->find_all();
-        return $this->delete_many($keys) == count($keys);
+        $this->delete_many($keys);
+        return true;
     }
 
     /**
