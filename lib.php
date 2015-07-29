@@ -42,8 +42,8 @@ require_once($CFG->dirroot . '/cache/stores/memcached/lib.php');
  * @copyright  2015 Skylar Kelty <S.Kelty@kent.ac.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class cachestore_memcachedplus extends cachestore_memcached implements cache_is_configurable, cache_is_key_aware, cache_is_searchable, cache_is_lockable {
-
+class cachestore_memcachedplus extends cachestore_memcached implements cache_is_configurable, cache_is_key_aware, cache_is_searchable, cache_is_lockable
+{
     /**
      * Initialises the cache.
      *
@@ -85,14 +85,20 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
 
     /**
      * Returns true if this store instance is ready to be used.
+     *
      * @return bool
      */
     public function is_ready() {
-        if (!isset($this->isready)) {
-            $this->isready = @$this->connection->set("ping", 'ping', 1);
+        static $isready = array();
+
+        $servers = $this->connection->getServerList();
+        $key = crc32(json_encode($servers));
+
+        if (!isset($isready[$key]) || !$isready[$key]) {
+            $isready[$key] = @$this->connection->set("ping", 'ping', 1);
         }
 
-        return $this->isready;
+        return $isready[$key];
     }
 
     /**
