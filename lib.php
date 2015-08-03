@@ -42,7 +42,8 @@ require_once($CFG->dirroot . '/cache/stores/memcached/lib.php');
  * @copyright  2015 Skylar Kelty <S.Kelty@kent.ac.uk>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class cachestore_memcachedplus extends cachestore_memcached implements cache_is_configurable, cache_is_key_aware, cache_is_searchable, cache_is_lockable {
+class cachestore_memcachedplus extends cachestore_memcached implements cache_is_configurable, cache_is_key_aware, cache_is_searchable, cache_is_lockable
+{
     /**
      * Initialises the cache.
      *
@@ -80,9 +81,24 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
                 $this->setconnections[] = $connection;
             }
         }
+    }
 
-        // Test the connection to the main connection.
-        $this->isready = @$this->connection->set("ping", 'ping', 1);
+    /**
+     * Returns true if this store instance is ready to be used.
+     *
+     * @return bool
+     */
+    public function is_ready() {
+        static $isready = array();
+
+        $servers = $this->connection->getServerList();
+        $key = crc32(json_encode($servers));
+
+        if (!isset($isready[$key]) || !$isready[$key]) {
+            $isready[$key] = @$this->connection->set("ping", 'ping', 1);
+        }
+
+        return $isready[$key];
     }
 
     /**
@@ -103,6 +119,24 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      */
     public static function get_supported_features(array $configuration = array()) {
         return self::SUPPORTS_NATIVE_TTL + self::IS_SEARCHABLE;
+    }
+
+    /**
+     * Put the connections into non-blocking mode.
+     * We should never do this, but when purging large sets of data
+     * it probably doesn't matter.
+     * Subsequent gets and sets are queued behind the deletes anyway,
+     * which means they will block there.
+     * This can be useful when we just fire-and-forget delete.
+     */
+    private function set_blocking($block) {
+        if ($this->clustered) {
+            foreach ($this->setconnections as $connection) {
+                $connection->setOption(\Memcached::OPT_NO_BLOCK, $block);
+            }
+        } else {
+            $this->connection->setOption(\Memcached::OPT_NO_BLOCK, $block);
+        }
     }
 
     /**
@@ -130,7 +164,11 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      */
     public function purge() {
         $keys = $this->find_all();
+
+        $this->set_blocking(false);
         $this->delete_many($keys);
+        $this->set_blocking(true);
+
         return true;
     }
 
