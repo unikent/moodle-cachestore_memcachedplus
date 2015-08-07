@@ -146,6 +146,10 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
      * @return int The number of items successfully deleted.
      */
     public function delete_many(array $keys) {
+        // Only delete keys we actually have.
+        $valid = $this->find_all();
+        $keys = array_intersect($keys, $valid);
+
         if ($this->clustered) {
             foreach ($this->setconnections as $connection) {
                 $connection->deleteMulti($keys);
@@ -166,7 +170,13 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
         $keys = $this->find_all();
 
         $this->set_blocking(false);
-        $this->delete_many($keys);
+        if ($this->clustered) {
+            foreach ($this->setconnections as $connection) {
+                $connection->deleteMulti($keys);
+            }
+        } else {
+            $this->connection->deleteMulti($keys);
+        }
         $this->set_blocking(true);
 
         return true;
@@ -318,16 +328,27 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
         if (!self::are_requirements_met()) {
             return false;
         }
-        if (!defined('TEST_CACHESTORE_MEMCACHED_TESTSERVERS')) {
+
+        $testservers = get_config('cachestore_memcachedplus', 'testservers');
+        $testservers = defined('TEST_CACHESTORE_MEMCACHED_TESTSERVERS') ? TEST_CACHESTORE_MEMCACHED_TESTSERVERS : $testservers;
+        if (empty($testservers)) {
             return false;
         }
 
+
         $configuration = array();
-        $configuration['servers'] = explode("\n", TEST_CACHESTORE_MEMCACHED_TESTSERVERS);
+        $configuration['servers'] = explode("\n", $testservers);
 
         $store = new static('Test memcached', $configuration);
         $store->initialise($definition);
 
         return $store;
+    }
+
+    /**
+     * Returns Memcached stats.
+     */
+    public function get_stats() {
+        return $this->connection->getStats();
     }
 }
