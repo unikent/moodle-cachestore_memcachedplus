@@ -322,16 +322,27 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
         if (!self::are_requirements_met()) {
             return false;
         }
-        if (!defined('TEST_CACHESTORE_MEMCACHED_TESTSERVERS')) {
+
+        $testservers = get_config('cachestore_memcachedplus', 'testservers');
+        $testservers = defined('TEST_CACHESTORE_MEMCACHED_TESTSERVERS') ? TEST_CACHESTORE_MEMCACHED_TESTSERVERS : $testservers;
+        if (empty($testservers)) {
             return false;
         }
 
+
         $configuration = array();
-        $configuration['servers'] = explode("\n", TEST_CACHESTORE_MEMCACHED_TESTSERVERS);
+        $configuration['servers'] = explode("\n", $testservers);
 
         $store = new static('Test memcached', $configuration);
         $store->initialise($definition);
 
         return $store;
+    }
+
+    /**
+     * Returns Memcached stats.
+     */
+    public function get_stats() {
+        return $this->connection->getStats();
     }
 }
