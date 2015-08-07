@@ -170,7 +170,13 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
         $keys = $this->find_all();
 
         $this->set_blocking(false);
-        $this->delete_many($keys);
+        if ($this->clustered) {
+            foreach ($this->setconnections as $connection) {
+                $connection->deleteMulti($keys);
+            }
+        } else {
+            $this->connection->deleteMulti($keys);
+        }
         $this->set_blocking(true);
 
         return true;
