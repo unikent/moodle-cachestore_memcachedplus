@@ -169,7 +169,6 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
     public function purge() {
         $keys = $this->find_all();
 
-        $this->set_blocking(false);
         if ($this->clustered) {
             foreach ($this->setconnections as $connection) {
                 $connection->deleteMulti($keys);
@@ -177,7 +176,6 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
         } else {
             $this->connection->deleteMulti($keys);
         }
-        $this->set_blocking(true);
 
         return true;
     }
