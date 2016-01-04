@@ -307,6 +307,10 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
         $result = array();
 
         $keys = $this->connection->getAllKeys();
+        if (!$keys) {
+            return $result;
+        }
+
         foreach ($keys as $key) {
             $pos = strpos($key, $prefix);
             if ($pos === 0) {
