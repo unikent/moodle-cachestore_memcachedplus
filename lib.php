@@ -84,24 +84,6 @@ class cachestore_memcachedplus extends cachestore_memcached implements cache_is_
     }
 
     /**
-     * Returns true if this store instance is ready to be used.
-     *
-     * @return bool
-     */
-    public function is_ready() {
-        static $isready = array();
-
-        $servers = $this->connection->getServerList();
-        $key = crc32(json_encode($servers));
-
-        if (!isset($isready[$key]) || !$isready[$key]) {
-            $isready[$key] = @$this->connection->set("ping", 'ping', 1);
-        }
-
-        return $isready[$key];
-    }
-
-    /**
      * Returns the supported modes as a combined int.
      *
      * @param array $configuration
