@@ -4,7 +4,6 @@ Key-aware Memcached store for Moodle.
 
 Additional features to core Memcached:
  * Session type support
- * Definition-aware purge()
+ * TCP no delay set
+ * LIBKETAMA compatible
  * Self-locking
- * Searchable
- * Key-aware
