@@ -45,7 +45,7 @@ require_once($CFG->dirroot . '/cache/stores/memcached/lib.php');
 class cachestore_memcachedplus extends cachestore_memcached
                                implements cache_is_configurable, cache_is_lockable
 {
-    private $prefix;
+    private $_storename;
 
     /**
      * Constructs the store instance.
@@ -57,6 +57,7 @@ class cachestore_memcachedplus extends cachestore_memcached
      * @param array $configuration
      */
     public function __construct($name, array $configuration = array()) {
+        $this->_storename = $name;
         $this->options[Memcached::OPT_LIBKETAMA_COMPATIBLE] = true;
         $this->options[Memcached::OPT_TCP_NODELAY] = true;
 
@@ -79,7 +80,7 @@ class cachestore_memcachedplus extends cachestore_memcached
      * @return boolean True on success. False otherwise.
      */
     public function purge() {
-        debugging("Memcached purge called.");
+        debugging("Memcached purge called for {$this->_storename}.");
 
         return parent::purge();
     }
