@@ -45,6 +45,8 @@ require_once($CFG->dirroot . '/cache/stores/memcached/lib.php');
 class cachestore_memcachedplus extends cachestore_memcached
                                implements cache_is_configurable, cache_is_lockable
 {
+    private $_prefix;
+    private $_simplekeys;
     private $_storename;
 
     /**
@@ -65,6 +67,20 @@ class cachestore_memcachedplus extends cachestore_memcached
     }
 
     /**
+     * Initialises the cache.
+     *
+     * Once this has been done the cache is all set to be used.
+     *
+     * @param cache_definition $definition
+     */
+    public function initialise(cache_definition $definition) {
+        $this->_prefix = $definition->generate_single_key_prefix();
+        $this->_simplekeys = $definition->uses_simple_keys();
+
+        return parent::initialise($definition);
+    }
+
+    /**
      * Returns the supported modes as a combined int.
      *
      * @param array $configuration
@@ -80,6 +96,25 @@ class cachestore_memcachedplus extends cachestore_memcached
      * @return boolean True on success. False otherwise.
      */
     public function purge() {
+        if ($this->_simplekeys) {
+            // Ooh! Perhaps..
+            $keys = $this->connection->getAllKeys();
+            if ($keys !== false) {
+                // Woo!
+                $purge = array();
+                foreach ($keys as $key) {
+                    $suffix = substr($key, strrpos($key, '-') + 1);
+                    if ($suffix == $this->_prefix) {
+                        $purge[] = $key;
+                    }
+                }
+
+                $this->delete_many($purge);
+
+                return true;
+            }
+        }
+
         debugging("Memcached purge called for {$this->_storename}.");
 
         return parent::purge();
