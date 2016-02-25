@@ -33,4 +33,19 @@ require_once($CFG->dirroot . '/cache/stores/memcached/addinstanceform.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class cachestore_memcachedplus_addinstance_form extends cachestore_memcached_addinstance_form {
+    /**
+     * Adds the desired form elements.
+     */
+    protected function configuration_definition() {
+        parent::configuration_definition();
+
+        $form = $this->_form;
+
+        $form->addElement('header', 'extrasheader', get_string('extras', 'cachestore_memcachedplus'));
+
+        $form->addElement('selectyesno', 'logpurges', get_string('logpurges', 'cachestore_memcachedplus'));
+        $form->addHelpButton('logpurges', 'logpurges', 'cachestore_memcachedplus');
+        $form->setDefault('logpurges', 0);
+        $form->setType('logpurges', PARAM_BOOL);
+    }
 }

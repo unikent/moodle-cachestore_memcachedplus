@@ -25,3 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['pluginname'] = 'Memcached+';
+
+$string['extras'] = 'Memcached+ Extras';
+
+$string['logpurges'] = 'Log purges';
+$string['logpurges_help'] = 'Logs any purges against this cache store.';
