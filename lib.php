@@ -219,4 +219,11 @@ class cachestore_memcachedplus extends cachestore_memcached
 
         return $store;
     }
+
+    /**
+     * Returns Memcached stats.
+     */
+    public function get_stats() {
+        return $this->connection->getStats();
+    }
 }
