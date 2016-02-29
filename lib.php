@@ -47,6 +47,8 @@ class cachestore_memcachedplus extends cachestore_memcached
 {
     private $_prefix;
     private $_simplekeys;
+    private $_logpurges;
+    private $_defid;
     private $_storename;
 
     /**
@@ -63,6 +65,8 @@ class cachestore_memcachedplus extends cachestore_memcached
         $this->options[Memcached::OPT_LIBKETAMA_COMPATIBLE] = true;
         $this->options[Memcached::OPT_TCP_NODELAY] = true;
 
+        $this->_logpurges = array_key_exists('logpurges', $configuration) ? (bool)$configuration['logpurges'] : false;
+
         parent::__construct($name, $configuration);
     }
 
@@ -74,6 +78,7 @@ class cachestore_memcachedplus extends cachestore_memcached
      * @param cache_definition $definition
      */
     public function initialise(cache_definition $definition) {
+        $this->_defid = $definition->get_id();
         $this->_prefix = $definition->generate_single_key_prefix();
         $this->_simplekeys = $definition->uses_simple_keys();
 
@@ -115,7 +120,9 @@ class cachestore_memcachedplus extends cachestore_memcached
             }
         }
 
-        debugging("Memcached purge called for {$this->_storename}.");
+        if ($this->_logpurges) {
+            debugging("Memcached purge called against {$this->_defid} for {$this->_storename}, definition does not have simple keys.");
+        }
 
         return parent::purge();
     }
@@ -158,6 +165,37 @@ class cachestore_memcachedplus extends cachestore_memcached
     }
 
     /**
+     * Given the data from the add instance form this function creates a configuration array.
+     *
+     * @param stdClass $data
+     * @return array
+     */
+    public static function config_get_configuration_array($data) {
+        $config = parent::config_get_configuration_array($data);
+        if (isset($data->logpurges)) {
+            $config['logpurges'] = $data->logpurges;
+        }
+
+        return $config;
+    }
+
+    /**
+     * Allows the cache store to set its data against the edit form before it is shown to the user.
+     *
+     * @param moodleform $editform
+     * @param array $config
+     */
+    public static function config_set_edit_form_data(moodleform $editform, array $config) {
+        parent::config_set_edit_form_data($editform, $config);
+
+        if (isset($config['logpurges'])) {
+            $data = (array)$editform->get_data();
+            $data['logpurges'] = (bool)$config['logpurges'];
+            $editform->set_data($data);
+        }
+    }
+
+    /**
      * Creates a test instance for unit tests if possible.
      * @param cache_definition $definition
      * @return bool|cachestore_memcached
@@ -180,5 +218,12 @@ class cachestore_memcachedplus extends cachestore_memcached
         $store->initialise($definition);
 
         return $store;
+    }
+
+    /**
+     * Returns Memcached stats.
+     */
+    public function get_stats() {
+        return $this->connection->getStats();
     }
 }
