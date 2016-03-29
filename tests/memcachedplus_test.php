@@ -100,37 +100,6 @@ class cachestore_memcachedplus_test extends cachestore_tests {
     }
 
     /**
-     * Test searching.
-     */
-    public function test_search() {
-        $definition = cache_definition::load_adhoc(cache_store::MODE_APPLICATION, 'cachestore_memcachedplus', 'phpunit_test');
-        $instance = cachestore_memcachedplus::initialise_unit_test_instance($definition);
-
-        if (!$instance) {
-            $this->markTestSkipped();
-        }
-
-        $instance->purge();
-        $this->assertEmpty($instance->find_all(), "Found items on a new connection");
-        $this->assertFalse($instance->has("search_1"), "Found search1 after purge");
-
-        // Add a few items.
-        $this->assertTrue($instance->set("search_1", "value!"), "Failed to set key `search_1`");
-        $this->assertTrue($instance->set("search_2", "value! :D"), "Failed to set key `search_1`");
-
-        // Search for search1.
-        $this->assertTrue($instance->has("search_1", "Couldn't find search1"));
-        $this->assertFalse($instance->has("search_3", "Found search_3 but didn't add it"));
-
-        // Test find_by_prefix.
-        $this->assertEquals(2, count($instance->find_by_prefix("search_")));
-        $this->assertEquals(0, count($instance->find_by_prefix("_search")));
-
-        // Cleanup.
-        $instance->purge();
-    }
-
-    /**
      * Test locking
      */
     public function test_locking() {
